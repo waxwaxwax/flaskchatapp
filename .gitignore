@@ -1,0 +1,79 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Flask instance folder
+instance/
+
+# Flask static build folder
+*.log
+*.pot
+*.pyc
+
+# Unit test / coverage reports
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Mac OS files
+.DS_Store
+
+# Windows files
+Thumbs.db
+
+# IDE / Editor settings
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.code-workspace
+
+# PyInstaller
+*.spec
+
+# MySQL / SQLite database (if any)
+*.db
+
+# Environment variables / secrets
+*.env
+*.local
+.env.*
+
+# SSL証明書ファイルを config フォルダから除外
+config/**/*.crt
+config/**/*.key
+config/**/*.pem

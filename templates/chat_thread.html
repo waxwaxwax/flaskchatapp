@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Chat Thread - {{ thread.name }}{% endblock %}
+
+{% block content %}
+<div class="flex h-screen">
+  <!-- サイドバートグルボタン -->
+  <button id="toggle-sidebar" class="absolute left-4 top-4 bg-gray-300 dark:bg-gray-700 p-2 rounded-lg">
+    <img src="{{ url_for('static', filename='images/sidebar-toggle.png') }}" alt="Toggle Sidebar" class="w-6 h-6">
+  </button>
+
+  <!-- サイドバー -->
+  <div id="sidebar" class="w-1/4 bg-gray-100 dark:bg-gray-800 p-4 h-full transition-all duration-300">
+    <h2 class="text-lg font-semibold">スレッド一覧</h2>
+    <ul>
+      {% for thread in threads %}
+      <li class="py-2 flex justify-between items-center">
+        <a href="{{ url_for('chat_thread', thread_id=thread.id) }}"
+          class="block bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 flex-grow">
+          {{ thread.name }}
+        </a>
+        <form action="{{ url_for('delete_thread', thread_id=thread.id) }}" method="POST" class="ml-2">
+          <button type="submit"
+            class="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition">
+            ✖
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    
+    <!-- 新しいスレッド作成 -->
+    <form action="{{ url_for('chat') }}" method="POST" class="mt-4">
+      <input type="text" name="thread_name" placeholder="新しいスレッド" required class="p-2 w-full border rounded-lg">
+      <button type="submit" class="mt-2 bg-green-500 text-white py-2 px-4 rounded-lg hover:bg-green-600 transition">
+        + 新規スレッド
+      </button>
+    </form>
+  </div>
+
+  <!-- チャットエリア -->
+  <div class="flex-1 p-6 flex flex-col h-full">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-2xl font-semibold">{{ thread.name }}</h1>
+      <form action="{{ url_for('delete_thread', thread_id=thread.id) }}" method="POST">
+        <button type="submit" class="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600">
+          🗑
+        </button>
+      </form>
+    </div>
+    <div id="chat-box" class="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg my-4 flex-1 overflow-y-scroll">
+      <div id="messages" class="space-y-6">
+        {% for message in messages %}
+          {% if message.sender == 'user' %}
+            <div class="flex justify-end mt-6">
+              <div class="bg-blue-500 text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+                <strong>You:</strong> {{ message.content }}
+              </div>
+            </div>
+          {% else %}
+            <div class="flex justify-start mt-6">
+              <div class="bg-gray-800 text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+                <strong>AI:</strong> {{ message.content }}
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- メッセージ送信フォーム -->
+    <form id="chat-form" class="flex mt-4 sticky bottom-0 bg-white dark:bg-gray-800 p-4 rounded-lg">
+      <input type="text" id="user-message" placeholder="Type your message" required
+        class="p-3 border rounded-lg flex-1 bg-white dark:bg-gray-800 text-black dark:text-white">
+      <button type="submit" class="bg-blue-500 text-white p-3 rounded-lg ml-2">Send</button>
+    </form>
+  </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggleButton = document.getElementById("toggle-sidebar");
+    const sidebar = document.getElementById("sidebar");
+
+    if (localStorage.getItem("sidebarHidden") === "true") {
+      sidebar.classList.add("hidden");
+    }
+
+    toggleButton.addEventListener("click", () => {
+      sidebar.classList.toggle("hidden");
+      localStorage.setItem("sidebarHidden", sidebar.classList.contains("hidden"));
+    });
+  });
+</script>
+{% endblock %}

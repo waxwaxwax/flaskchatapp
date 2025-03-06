@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Page{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+    <h1 class="text-2xl font-bold text-center">お問い合わせ</h1>
+    <p class="text-center text-gray-600 dark:text-gray-300 mt-2">以下のフォームからお問い合わせください。</p>
+
+    <!-- フラッシュメッセージ -->
+    {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="mt-4 p-3 text-white rounded-md text-center 
+                      {% if category == 'success' %} bg-green-500 {% else %} bg-red-500 {% endif %}">
+              {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('contact') }}" method="post" class="mt-6">
+        <div class="mb-4">
+            <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">名前</label>
+            <input type="text" id="name" name="name" required 
+                   class="mt-1 block w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2">
+        </div>
+
+        <div class="mb-4">
+            <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">メールアドレス</label>
+            <input type="email" id="email" name="email" required 
+                   class="mt-1 block w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2">
+        </div>
+
+        <div class="mb-4">
+            <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300">メッセージ</label>
+            <textarea id="message" name="message" rows="5" required 
+                      class="mt-1 block w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-black dark:text-white rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2"></textarea>
+        </div>
+
+        <button type="submit" 
+                class="w-full bg-blue-600 dark:bg-blue-500 text-white py-2 rounded-md shadow-md hover:bg-blue-700 dark:hover:bg-blue-400 transition duration-200">
+            送信
+        </button>
+    </form>
+</div>
+{% endblock %}

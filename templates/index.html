@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+  <!-- 画面中央に配置 -->
+  <div class="flex flex-col items-center justify-center min-h-[70vh] text-center">
+    <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100">
+      Welcome to My AI web app with Flask!
+    </h1>
+    <p class="text-lg text-gray-600 dark:text-gray-400 mt-3">
+      このサイトは、Flask のテンプレートレンダリング と Azure OpenAI の練習用です。
+    </p>
+
+    <div class="mt-6">
+      {% if 'user_id' in session %}
+        <!-- サインイン済みの場合は「Chat with AI」ボタン -->
+        <a href="{{ url_for('chat') }}"
+          class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition duration-200 flex items-center">
+          🚀 Chat with AI
+        </a>
+      {% else %}
+        <!-- サインインしていない場合は「サインイン」ボタン -->
+        <a href="{{ url_for('login', next=url_for('chat')) }}"
+          class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg shadow-lg transition duration-200 flex items-center">
+          🔑 サインインしてチャット
+        </a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

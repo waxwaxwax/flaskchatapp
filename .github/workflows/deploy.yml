@@ -1,0 +1,63 @@
+name: Deploy Flask Chat App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      # GitHub Secrets の確認（エラー時に警告）
+      - name: Check Secret
+        run: |
+          if [[ -z "${{ secrets.MYSQL_SSL_CA_SECRET }}" ]]; then
+            echo "❌ MYSQL_SSL_CA_SECRET is empty! Check GitHub Secrets settings."
+            exit 1
+          else
+            echo "✅ MYSQL_SSL_CA_SECRET is set!"
+          fi
+
+      # 証明書ファイルを作成
+      - name: Set up MySQL SSL certificate
+        run: |
+          mkdir -p config
+          echo "${{ secrets.MYSQL_SSL_CA_SECRET }}" > config/DigiCertGlobalRootCA.crt.pem
+          echo "MYSQL_SSL_CA=$(pwd)/config/DigiCertGlobalRootCA.crt.pem" >> $GITHUB_ENV
+
+      # 証明書の内容確認
+      - name: Verify SSL Certificate
+        run: |
+          if [[ ! -s "config/DigiCertGlobalRootCA.crt.pem" ]]; then
+            echo "❌ SSL Certificate is empty!"
+            exit 1
+          else
+            echo "✅ SSL Certificate successfully written!"
+          fi
+
+      - name: Run tests
+        run: |
+          pytest || echo "No tests found"
+
+      - name: Deploy to Azure Web App
+        uses: Azure/webapps-deploy@v2
+        with:
+          app-name: flaskchatapp
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: .

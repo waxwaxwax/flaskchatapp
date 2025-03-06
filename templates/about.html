@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}About Page{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold mb-4">About This App</h1>
+<p class="mb-4">
+  このアプリは Azure OpenAI を利用したチャット機能を備えています。ユーザーが自由にスレッドを作成し、対話形式でやり取りが可能です。 
+</p>
+<p class="mb-4">
+  <strong>主な機能：</strong>
+  <ul class="list-disc list-inside ml-4">
+    <li>スレッド管理（複数の会話を個別に保持）</li>
+    <li>Azure OpenAI を使った自然な文章生成</li>
+    <li>Tailwind CSS を利用したレスポンシブUI</li>
+  </ul>
+</p>
+<p class="mb-4">
+    <br>
+  今後は以下のアップデートを予定しています：
+  <ul class="list-disc list-inside ml-4">
+    <li>ファイルアップロードと要約機能</li>
+    <li>日本語以外の多言語対応</li>
+    <li>ユーザープロフィールのカスタマイズ</li>
+  </ul>
+</p>
+<p>
+    <br>
+  <strong>開発者：</strong> このアプリは個人開発で、Flask と Tailwind CSS、Azure OpenAI を活用しています。  
+  何か不具合や改善点があれば、お気軽にご連絡ください。
+</p>
+{% endblock %}

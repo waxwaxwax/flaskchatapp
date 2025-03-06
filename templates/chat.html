@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}Chat with Azure OpenAI{% endblock %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white">
+  <!-- 新規スレッド作成ボタン -->
+  <button id="new-thread" class="fixed left-16 top-4 bg-gray-700 text-white p-2 rounded-lg z-50">
+    <img src="{{ url_for('static', filename='images/editpen.png') }}" alt="New Thread" class="w-6 h-6">
+  </button>
+  <!-- サイドバートグルボタン -->
+  <button id="toggle-sidebar" class="fixed left-4 top-4 bg-gray-700 p-2 rounded-lg z-50">
+    <img src="{{ url_for('static', filename='images/sidebar-toggle.png') }}" alt="Toggle Sidebar" class="w-6 h-6">
+  </button>
+
+  <!-- サイドバー -->
+  <div id="sidebar" class="w-64 bg-gray-100 dark:bg-gray-900 h-screen flex flex-col">
+    <div class="h-16"></div> <!-- Spacing for the top buttons -->
+    <h2 class="text-lg font-semibold px-4">スレッド一覧</h2>
+    <ul id="thread-list" class="flex-1 overflow-y-auto px-4">
+      {% for thread in threads %}
+      <li class="py-2 flex justify-between items-center">
+        <a href="#" class="thread-link block bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 flex-grow"
+           data-thread-id="{{ thread.id }}">
+          {{ thread.name }}
+        </a>
+        <form action="{{ url_for('delete_thread', thread_id=thread.id) }}" method="POST" class="ml-2">
+          <button type="submit" class="text-white px-3 py-1 rounded-lg hover:bg-red-600 transition">
+            🗑️
+          </button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <!-- チャットエリア -->
+  <div class="flex-1 flex flex-col h-screen relative">
+    <h1 class="text-2xl font-semibold text-center pt-4">Chat with Azure OpenAI</h1>
+    
+    <!-- 通常のチャットエリア（スレッドが選択されている場合） -->
+    <div id="thread-chat-area" class="{% if not thread %}hidden{% endif %} flex flex-col h-full">
+      <div id="chat-box" class="p-4 flex-1 overflow-y-auto" style="height: calc(100vh - 180px);">
+        <div id="messages" class="space-y-6">
+          {% if thread %}  {# 表示中のスレッドがあればそのメッセージを表示 #}
+            {% for message in messages %}
+              {% if message.sender == 'user' %}
+                <div class="flex justify-end mt-6">
+                  <div class="bg-blue-500 text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+                    <strong>You:</strong> {{ message.content }}<br>
+                    <small>{{ message.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                  </div>
+                </div>
+              {% else %}
+                <div class="flex justify-start mt-6">
+                  <div class="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+                    <strong>AI:</strong> {{ message.content }}<br>
+                    <small>{{ message.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- メッセージ送信フォーム -->
+      <div class="absolute bottom-0 left-0 right-0 p-4 bg-gray-100 dark:bg-gray-900">
+        <form id="chat-form" class="flex w-full">
+          <textarea id="user-message" placeholder="Type your message" required rows="1" class="p-3 border rounded-lg flex-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white resize-none"></textarea>
+          <button type="submit" class="bg-blue-600 text-white p-3 rounded-lg ml-2">Send</button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- 中央入力エリア（スレッドが選択されていない場合） -->
+    <div id="centered-chat-area" class="{% if thread %}hidden{% endif %} flex flex-col h-full">
+      <div class="flex-1 flex flex-col justify-center items-center">
+        <div class="text-center mb-8 max-w-3xl">
+          <h2 class="text-2xl font-semibold mb-4">お手伝いできることはありますか？</h2>
+        </div>
+      </div>
+      
+      <!-- 中央入力フォーム - 固定ポジション -->
+      <div class="absolute bottom-0 left-0 right-0 p-4 bg-gray-100 dark:bg-gray-900">
+        <form id="centered-chat-form" class="flex w-full mx-auto">
+          <textarea id="centered-user-message" placeholder="質問してみましょう" required rows="1" class="p-3 border rounded-lg flex-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white resize-none"></textarea>
+          <button type="submit" class="bg-blue-600 text-white p-3 rounded-lg ml-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const toggleButton      = document.getElementById("toggle-sidebar");
+    const sidebar           = document.getElementById("sidebar");
+    const form              = document.getElementById("chat-form");
+    const userMessageInput  = document.getElementById("user-message");
+    const messagesContainer = document.getElementById("messages");
+    const threadList        = document.getElementById("thread-list");
+    const newThreadButton   = document.getElementById("new-thread");
+    let currentThreadId = document.querySelector("#thread-list a")?.dataset.threadId || null;
+    const threadChatArea = document.getElementById("thread-chat-area");
+    const centeredChatArea = document.getElementById("centered-chat-area");
+    const centeredForm = document.getElementById("centered-chat-form");
+    const centeredUserMessageInput = document.getElementById("centered-user-message");
+    
+    // スレッドの有無によって表示を切り替える関数
+    function toggleChatAreas() {
+      if (currentThreadId) {
+        threadChatArea.classList.remove("hidden");
+        centeredChatArea.classList.add("hidden");
+      } else {
+        threadChatArea.classList.add("hidden");
+        centeredChatArea.classList.remove("hidden");
+      }
+    }
+    
+    // 初期表示を設定
+    toggleChatAreas();
+
+    // サイドバーの表示状態を維持
+    if (localStorage.getItem("sidebarHidden") === "true") {
+      sidebar.classList.add("hidden");
+    }
+    toggleButton.addEventListener("click", () => {
+      sidebar.classList.toggle("hidden");
+      localStorage.setItem("sidebarHidden", sidebar.classList.contains("hidden"));
+    });
+
+    // 新規スレッド作成ボタン
+    newThreadButton.addEventListener("click", async () => {
+      const newThread = await createNewThread(true); // ボタンからはリダイレクトさせる
+      if (newThread) {
+        currentThreadId = newThread.thread_id;
+        toggleChatAreas();
+      }
+    });
+
+    // 新規スレッド作成関数（shouldRedirect=trueならページ遷移）
+    async function createNewThread(shouldRedirect = false) {
+      try {
+        const response = await fetch("/chat/new_thread", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
+        });
+        const data = await response.json();
+        if (data.success) {
+          currentThreadId = data.thread_id;
+          addThreadToSidebar(data.thread_id, data.thread_name);
+          if (shouldRedirect) {
+            window.location.href = `/chat/${data.thread_id}`;
+          }
+          return data;
+        }
+      } catch (error) {
+        console.error("Error creating new thread:", error);
+      }
+      return null;
+    }
+
+    function addThreadToSidebar(threadId, threadName) {
+      if (!document.querySelector(`[data-thread-id='${threadId}']`)) {
+        threadList.innerHTML += `
+          <li class="py-2 flex justify-between items-center">
+            <a href="#" class="thread-link block bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 flex-grow"
+               data-thread-id="${threadId}">
+              ${threadName}
+            </a>
+            <form action="/chat/delete/${threadId}" method="POST" class="ml-2">
+              <button type="submit" class="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition">
+                ✖
+              </button>
+            </form>
+          </li>`;
+      }
+    }
+
+    // サイドバーのスレッドをクリックしたとき
+    threadList.addEventListener("click", (event) => {
+      const threadLink = event.target.closest(".thread-link");
+      if (threadLink) {
+        event.preventDefault();
+        currentThreadId = threadLink.dataset.threadId;
+        loadThreadMessages(currentThreadId);
+        toggleChatAreas();
+      }
+    });
+
+    async function loadThreadMessages(threadId) {
+      try {
+        const response = await fetch(`/chat/${threadId}/messages`);
+        const data = await response.json();
+        messagesContainer.innerHTML = "";
+        if (data.messages) {
+          data.messages.forEach(msg => {
+            const alignClass = (msg.sender === "user") ? "justify-end" : "justify-start";
+            const bgClass    = (msg.sender === "user") ? "bg-blue-500" : "bg-gray-800";
+            // 改行を <br> に変換
+            const content = msg.content.replace(/\n/g, '<br>');
+            messagesContainer.innerHTML += `
+              <div class="flex ${alignClass} mt-6">
+                <div class="${bgClass} text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+                  <strong>${msg.sender === "user" ? "You" : "AI"}:</strong> ${content}<br>
+                  <small>${msg.timestamp}</small>
+                </div>
+              </div>`;
+          });
+        }
+      } catch (error) {
+        console.error("Error loading messages:", error);
+      }
+    }
+
+    // メッセージ送信処理
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userMessageRaw = userMessageInput.value.trim();
+      if (!userMessageRaw) return;
+
+      // 改行を <br> に変換して表示用のHTML文字列にする
+      const userMessage = userMessageRaw.replace(/\n/g, '<br>');
+      
+      // スレッドが無ければ自動作成（リダイレクトはしない）
+      if (!currentThreadId) {
+        const newThread = await createNewThread(false);
+        if (!newThread) return;
+        currentThreadId = newThread.thread_id;
+      }
+
+      userMessageInput.value = "";
+      const timestamp = new Date().toLocaleString();
+      // ユーザーメッセージを画面に表示
+      messagesContainer.innerHTML += `
+        <div class="flex justify-end mt-6">
+          <div class="bg-blue-500 text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+            <strong>You:</strong> ${userMessage}<br>
+            <small>${timestamp}</small>
+          </div>
+        </div>`;
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      try {
+        const response = await fetch(`/chat/send_message`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMessageRaw, thread_id: currentThreadId })
+        });
+        const data = await response.json();
+        if (!data.reply) throw new Error("No AI response received");
+
+        // AIの返答も同様に改行を反映する
+        const aiMessage = data.reply.replace(/\n/g, '<br>');
+        const threadId = data.thread_id;
+        const threadName = `${data.thread_name} - ${timestamp}`;
+        const aiTimestamp = new Date().toLocaleString();
+
+        // AIメッセージを表示
+        messagesContainer.innerHTML += `
+          <div class="flex justify-start mt-6">
+            <div class="bg-gray-800 text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+              <strong>AI:</strong> ${aiMessage}<br>
+              <small>${aiTimestamp}</small>
+            </div>
+          </div>`;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // スレッド名の更新（「New Chat」の場合のみ）
+        const threadElement = document.querySelector(`[data-thread-id='${threadId}']`);
+        if (threadElement && threadElement.textContent.trim().startsWith("New Chat")) {
+          threadElement.textContent = threadName;
+        }
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
+    });
+
+    // 中央の入力フォームの送信処理
+    centeredForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userMessageRaw = centeredUserMessageInput.value.trim();
+      if (!userMessageRaw) return;
+      
+      // まず新しいスレッドを作成
+      const newThread = await createNewThread(false);
+      if (!newThread) return;
+      currentThreadId = newThread.thread_id;
+      
+      // UIを切り替え
+      toggleChatAreas();
+      
+      // ユーザーメッセージを表示
+      const userMessage = userMessageRaw.replace(/\n/g, '<br>');
+      const timestamp = new Date().toLocaleString();
+      messagesContainer.innerHTML += `
+        <div class="flex justify-end mt-6">
+          <div class="bg-blue-500 text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+            <strong>You:</strong> ${userMessage}<br>
+            <small>${timestamp}</small>
+          </div>
+        </div>`;
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+      // メッセージを送信
+      try {
+        const response = await fetch(`/chat/send_message`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: userMessageRaw, thread_id: currentThreadId })
+        });
+        const data = await response.json();
+        if (!data.reply) throw new Error("No AI response received");
+
+        // AIの返答を表示
+        const aiMessage = data.reply.replace(/\n/g, '<br>');
+        const threadId = data.thread_id;
+        const threadName = data.thread_name;
+        const aiTimestamp = new Date().toLocaleString();
+
+        // AIメッセージを表示
+        messagesContainer.innerHTML += `
+          <div class="flex justify-start mt-6">
+            <div class="bg-gray-800 text-white py-4 px-6 rounded-lg shadow-lg max-w-lg">
+              <strong>AI:</strong> ${aiMessage}<br>
+              <small>${aiTimestamp}</small>
+            </div>
+          </div>`;
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // スレッド名の更新
+        const threadElement = document.querySelector(`[data-thread-id='${threadId}']`);
+        if (threadElement && threadElement.textContent.trim().startsWith("New Chat")) {
+          threadElement.textContent = threadName;
+        }
+
+        // 中央フォームをクリア
+        centeredUserMessageInput.value = "";
+      } catch (error) {
+        console.error("Error sending message:", error);
+      }
+    });
+  });
+</script>
+{% endblock %}
+
